@@ -125,7 +125,7 @@ def write_states():
             else:
                 print('ERROR: {}'.format(arduino.status))
     # Parse recived list
-    rec_list_  = arduino.rx_obj(obj_type=type(list_), obj_byte_size=list_size, byte_format='b')
+    rec_list_  = arduino.rx_obj(obj_type=type(list_), obj_byte_size=list_size, list_format='i')
     print(list_size)
     print('SENT: {}'.format(list_))
     print('RCVD: {}'.format(rec_list_))
