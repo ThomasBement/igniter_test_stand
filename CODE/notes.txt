@@ -1,0 +1,3 @@
+Clone test_gui.py to test_gui_simple_serial.py
+remove third party SerialTransfer stuff from test_gui_simple_serial.py
+test_gui_simple_serial.py runs seems like a good start. Relay state seems a bit complex. Might be better to store relay state in an integer as a bit field.
