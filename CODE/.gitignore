@@ -1,0 +1,5 @@
+# Debug log files
+*.log
+
+# Python:
+__pycache__/
