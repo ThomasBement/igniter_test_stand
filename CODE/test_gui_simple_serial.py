@@ -214,4 +214,3 @@ PROGRAM TERMINATION
 """
 # Close out serial port at finish
 print('Thanks for playing...')
-arduino.close()
