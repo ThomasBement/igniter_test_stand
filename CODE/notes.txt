@@ -1,3 +1,22 @@
 Clone test_gui.py to test_gui_simple_serial.py
 remove third party SerialTransfer stuff from test_gui_simple_serial.py
 test_gui_simple_serial.py runs seems like a good start. Relay state seems a bit complex. Might be better to store relay state in an integer as a bit field.
+Then just send one control byte as ASCII, in binary format, with a one byte checksum in hex (AA), with a comma delimiter:
+
+"00000001,AA" 
+
+relay_cont.ino would echo this back if correct check sum and change relays state to match. Otherwise return "Error".
+
+So breaking this task down I have:
+  1. tkinter GUI, seems to work/be complete.
+  2. You'll want logging on the arduino, but you are using existing serial port for link, so:
+    a. Get a USB to serial TTL converter should support 3.3V logic levels. Like: https://universal-solder.ca/product/ch340-usb-uart-interface-programming/
+    b. Install realterm for windows and verify you can communicate w/ USB to serial TTL converter using loopback (RX connected to TX)
+    c. Modify Arduino example for one character loopback: File/Examples/SoftwareSerial 
+    d. Verify you can communicate w/ the Uno using realterm.
+  3. Test serial_echo_test.py on you setup with USB to serial TTL converter loopback:
+     ./serial_echo_test.py com3 9600
+  4. Merge test_gui_simple_serial.py and serial_echo_test.py. Test with USB to serial TTL converter loopback.
+  5. Merge SoftwareSerial into relay_cont.ino and connect Uno SoftwareSerial TX pin to USB to serial TTL converter.
+  6. In test_gui_simple_serial.py add support to open/read serial TTL converter into log.
+
