@@ -2,14 +2,11 @@
 #include <assert.h>
 #include <SoftwareSerial.h>
 
-#define IN1 2 //Relay IN1 input pin
-#define IN2 3 //Relay IN2 input pin
-#define IN3 4 //Relay IN3 input pin
-#define IN4 5 //Relay IN4 input pin
-#define IN5 6 //Relay IN5 input pin
-#define IN6 7 //Relay IN6 input pin
-#define IN7 8 //Relay IN7 input pin
-#define IN8 9 //Relay IN8 input pin
+// The following provide a mapping from Arduino digital pin to relay
+// board control pins INx. The pins must be in sequential order.
+//
+#define RELAY_BOARD_IN1_PIN     2
+#define NUM_RELAY_BOARD_IN_PINS 8
 
 SoftwareSerial mySerial(10, 11); // RX, TX
 
@@ -21,26 +18,13 @@ void flush_serial_rc(void)
 void setup() {
   // Open serial communications and wait for port to open:
   Serial.begin(9600);
-
-  // Define output pins
-  digitalWrite(IN1, HIGH);
-  digitalWrite(IN2, HIGH);
-  digitalWrite(IN3, HIGH);
-  digitalWrite(IN4, HIGH);
-  digitalWrite(IN5, HIGH);
-  digitalWrite(IN6, HIGH);
-  digitalWrite(IN7, HIGH);
-  digitalWrite(IN8, HIGH);
-  pinMode(IN1, OUTPUT);
-  pinMode(IN2, OUTPUT);
-  pinMode(IN3, OUTPUT);
-  pinMode(IN4, OUTPUT);
-  pinMode(IN5, OUTPUT);
-  pinMode(IN6, OUTPUT);
-  pinMode(IN7, OUTPUT);
-  pinMode(IN8, OUTPUT);
-
   while (!Serial);
+
+  // Define pins as output in inactive state.
+  for (int i = 0;  i < NUM_RELAY_BOARD_IN_PINS; i++) {
+      digitalWrite(i + RELAY_BOARD_IN1_PIN, HIGH);
+      pinMode(i + RELAY_BOARD_IN1_PIN, OUTPUT);
+  }
 
   // set the data rate for the SoftwareSerial port
   mySerial.begin(9600);
@@ -73,14 +57,14 @@ void loop()
             flush_serial_rc();
             return;
         }
-        digitalWrite(IN1, ~(b & 0b00000001)); // replace with port write if possible
-        digitalWrite(IN2, ~(b & 0b00000010));
-        digitalWrite(IN3, ~(b & 0b00000100));
-        digitalWrite(IN4, ~(b & 0b00001000));
-        digitalWrite(IN5, ~(b & 0b00010000));
-        digitalWrite(IN6, ~(b & 0b00100000));
-        digitalWrite(IN7, ~(b & 0b01000000));
-        digitalWrite(IN8, ~(b & 0b10000000));
+
+        // Binary format conversion and termination checks passed, set relays.
+        unsigned char bMask = 0b00000001;
+        for (int i = 0;  i < NUM_RELAY_BOARD_IN_PINS; i++) {
+            digitalWrite(i + RELAY_BOARD_IN1_PIN, (b & bMask) ? LOW:HIGH);
+            bMask <<= 1; 
+        }
+        
         Serial.write(szRxCommand);
     }
 }
