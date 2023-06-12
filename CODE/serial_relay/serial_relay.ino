@@ -72,6 +72,7 @@ byte receive_command_byte(byte bRxState, char *pszRxCmd)
 			}
             break;
         default:
+			mySerial.println("\r\nUnknown state!");
             assert(0);
     }
     mySerial.println("\r\nProtocol Error. Back to IDLE");
@@ -108,6 +109,7 @@ void loop()
         if (errno != 0 ) {
 			sprintf(g_szDbg, "Binary format error, strtol: %d", errno);
 			mySerial.println(g_szDbg); Serial.println(g_szDbg);
+			bRxState = IDLE;
             return;
         }
 

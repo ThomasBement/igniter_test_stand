@@ -30,6 +30,7 @@
 #******************************************************************************
 
 import sys
+import time
 import serial_helper as sh
 import logger_helper as lh
 
@@ -42,6 +43,7 @@ print("Test started...")
 
 g_log = lh.setup_custom_logger('serial_echo_test.log')
 s = sh.open_serial_port(port, baud_rate, g_log)
+time.sleep(2)
 
 # 0b00000000 => all relays off
 #
@@ -54,17 +56,19 @@ r |= relay0
 r |= relay1    
 
 # format command string as 8 bit binary value with end of line character terminating.
-send_string = format(r, '08b') + '\r\n'
+send_string = 'b' + format(r, '08b') + '\n'
 
 sh.send_line_to_serial(s, send_string)
 response = sh.read_line_from_serial(s)
 if (response == send_string): print("Command string echoed correctly") 
 else: print("Error! Command string not echoed correctly")
 
+time.sleep(2)
+
 # Turn relay 0 off:
 r &= ~relay0
 
-send_string = format(r, '08b') + '\r\n'
+send_string = 'b' + format(r, '08b') + '\n'
 sh.send_line_to_serial(s, send_string)
 response = sh.read_line_from_serial(s)
 if (response == send_string): print("Command string echoed correctly") 
