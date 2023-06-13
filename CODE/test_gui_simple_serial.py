@@ -10,6 +10,7 @@
 IMPORTS
 """
 import os
+import sys
 import time
 import serial
 import struct
@@ -20,11 +21,16 @@ import matplotlib.pyplot as plt
 from PIL import ImageTk, Image
 from tkinter import filedialog
 
+import serial_helper as sh
+import logger_helper as lh
+
 """
 CONSTANTS
 """
 refresh_delay   = 10                # Serial read/write delay in 
-com             = 'COM3'            # COM port for serial connection
+port = 'COM3'                       # Serial port for commands, Windoz
+port = '/dev/ttyUSB0'				# Serial port for commands, Linux
+baud_rate = '9600'
 
 # Relay specific information
 # UPDATE IN ARDUINO CODE
@@ -33,11 +39,11 @@ relay_num       =   [1,             2,              3,              4,          
 relay_arduino   =   ['PR_SV_001',   'PR_SV_002',    'PR_SV_003',    'PR_SV_004',    'PG_SV_001',    'NA',   'E-STOP',   'E-STOP']   # Relay valve wiring arduino
 
 # Opperational states, see "relay_arduino" for valve names
-system_states = {'safe': [0, 0, 0, 0, 0, 0, 0, 0],
-                 'fill': [0, 1, 0, 0, 0, 0, 0, 0],
-                 'press': [1, 0, 0, 0, 0, 0, 0, 0],
-                 'fire': [1, 0, 1, 1, 0, 0, 0, 0],
-                 'purge': [0, 0, 1, 1, 1, 0, 0, 0],
+system_states = {'safe':    [0, 0, 0, 0, 0, 0, 0, 0],
+                 'fill':    [0, 1, 0, 0, 0, 0, 0, 0],
+                 'press':   [1, 0, 0, 0, 0, 0, 0, 0],
+                 'fire':    [1, 0, 1, 1, 0, 0, 0, 0],
+                 'purge':   [0, 0, 1, 1, 1, 0, 0, 0],
                  'depress': [0, 1, 0, 0, 0, 0, 0, 0]}
 
 # Initialize state to "safe"
@@ -105,53 +111,44 @@ def state_change(name):
                     valves['O2_PV_001'][3].set(valves[key][3].get())
                     valves['O2_PV_001'][4] = valves[key][4]
 
-# Input relay number and state to array
+# Send a command to the arduino and check response. Takes ~74 mS (no error).
+def send_command_check_resp(s, send_string):
+	sh.send_line_to_serial(s, send_string)
+	response = sh.read_line_from_serial(s)
+	if (response == send_string): return (True, response)
+	else: 
+		if (response): return (False, response)
+		else: return (False, 'No response')
+
+# Send relay state to Arduino
 def write_states():
-	pass
-'''
-    # Construct packet
-    send_size = 0
-    list_ = states
-    list_size = arduino.tx_obj(list_, byte_format='b')
-    send_size += list_size
-    # Send
-    arduino.send(send_size)
-    # Wait for response
-    while not arduino.available():
-        if arduino.status < 0:
-            if arduino.status == txfer.CRC_ERROR:
-                print('ERROR: CRC_ERROR')
-            elif arduino.status == txfer.PAYLOAD_ERROR:
-                print('ERROR: PAYLOAD_ERROR')
-            elif arduino.status == txfer.STOP_BYTE_ERROR:
-                print('ERROR: STOP_BYTE_ERROR')
-            else:
-                print('ERROR: {}'.format(arduino.status))
-    # Parse recived list
-    rec_list_  = arduino.rx_obj(obj_type=type(list_), obj_byte_size=list_size, list_format='i')
-    print(list_size)
-    print('SENT: {}'.format(list_))
-    print('RCVD: {}'.format(rec_list_))
-    print(' ')
-    if (list_==rec_list_):
-        return True
-    else:
-        # Debug print
-        print('SENT: {}'.format(list_))
-        print('RCVD: {}'.format(rec_list_))
-        print(' ')
-        return False
-'''
-        
+	send_string = 'b' + "".join(['0' if (i == 0) else '1' for i in states]) + '\n'
+    # Need to check order of relays, may need to reverse. PR-SV-004 is controlling D6 now.
+	ret = send_command_check_resp(s, send_string)
+    # Should update status line here.
+	if (ret[0] == False):
+		 print(ret[1])
+		 return False
+	return True
+      
 """
 MAIN
 """
-# Start up serial
-print('Starting up...')
+# Start up serial w/ command line params, if present.
+if len(sys.argv) > 1: port = sys.argv[1]
+if len(sys.argv) > 2: baud_rate = sys.argv[2]
 
-print('Finished, serial connection secured')
-print('COM: %s' %(com))
-time.sleep(1)
+print("Test started...", end='')
+log_name = os.path.splitext(sys.argv[0])[0]+'.log'
+g_log = lh.setup_custom_logger(log_name)
+print('Log on: ' + log_name)
+print("Open serial port (resets Arduino)...", end='')
+s = sh.open_serial_port(port, baud_rate, g_log)
+print("Wait on Arduino...", end='')
+time.sleep(2) # Wait for Arduino to reset and initialize.
+print('OK')
+send_command_check_resp(s, 'b00000000\n') 	# All relays off to start.
+# Update status line here.
 
 # Open tkinter window
 window = tk.Tk()
@@ -201,12 +198,6 @@ for i, key in enumerate(system_states):
 """
 LOOPED FUNCTIONS
 """
-# Send serial data
-def serial_refresh():
-    # Put looped functions here
-    window.after(refresh_delay, serial_refresh)
-
-window.after(refresh_delay, serial_refresh)
 window.mainloop()
 
 """

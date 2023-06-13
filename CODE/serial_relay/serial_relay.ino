@@ -20,10 +20,10 @@
 
 // States for serial command RX state machine (bRxState).
 //
-#define IDLE   0
-#define RX_SOT 1
-#define RX_EOT 3
-#define DONE   4
+#define IDLE    0
+#define RX_BITS 1
+#define RX_EOT  3
+#define DONE    4
 
 
 char g_szDbg[80];
@@ -37,6 +37,7 @@ void flush_serial_rc(void)
 
 byte receive_command_byte(byte bRxState, char *pszRxCmd)
 { 
+	digitalWrite(LED_BUILTIN, HIGH);
 	static word wIndex;
 	byte b = Serial.read();
 	if (isPrintable(b)) mySerial.write(b);
@@ -46,25 +47,25 @@ byte receive_command_byte(byte bRxState, char *pszRxCmd)
 	}
 	
 	switch (bRxState) {
-        case IDLE:
+        case IDLE:				// Waiting for SOT
 			if (b == SOT) {
 				pszRxCmd[0] = b;
 				wIndex = 0;
- 		        mySerial.println("\r\nRX_SOT");
-				return RX_SOT;
+ 		        mySerial.println("\r\nRX_BITS");
+				return RX_BITS;
 			}
             break;
-        case RX_SOT:
+        case RX_BITS:			// Receive binary bits
 			if ((b == '0') || (b == '1')) {
 				pszRxCmd[++wIndex] = b;
 				if (wIndex >= 8) {
  				    mySerial.println("\r\nRX_EOT");
 					return RX_EOT;
 				}
-				return RX_SOT;
+				return RX_BITS;
 			}
             break;
-        case RX_EOT:
+        case RX_EOT:			// Receive EOT
 			if (b == EOT) {
 				pszRxCmd[9] = b;
 				mySerial.println("\r\nDONE");
@@ -82,19 +83,22 @@ byte receive_command_byte(byte bRxState, char *pszRxCmd)
 }
 
 void setup() {
-  // Open serial communications and wait for port to open:
-  Serial.begin(9600);
-  while (!Serial);
+	digitalWrite(LED_BUILTIN, LOW);
+	pinMode(LED_BUILTIN, OUTPUT);
 
-  // Define pins as output in inactive state.
-  for (int i = 0;  i < NUM_RELAY_BOARD_IN_PINS; i++) {
-      digitalWrite(i + RELAY_BOARD_IN1_PIN, HIGH);
-      pinMode(i + RELAY_BOARD_IN1_PIN, OUTPUT);
-  }
-
-  // set the data rate for the SoftwareSerial port
-  mySerial.begin(9600);
-  mySerial.println("Relay control firmware, version 1.1");
+	// Open serial communications and wait for port to open:
+	Serial.begin(9600);
+	while (!Serial);
+	
+	// Define pins as output in inactive state.
+	for (int i = 0;  i < NUM_RELAY_BOARD_IN_PINS; i++) {
+	  digitalWrite(i + RELAY_BOARD_IN1_PIN, HIGH);
+	  pinMode(i + RELAY_BOARD_IN1_PIN, OUTPUT);
+	}
+	
+	// Set the data rate for the SoftwareSerial port (debug log).
+	mySerial.begin(9600);
+	mySerial.println("Relay control firmware, version 1.2");
 }
 
 void loop()
@@ -106,21 +110,21 @@ void loop()
     if (bRxState == DONE) {    
         errno = 0;
         byte b = (byte) (strtol(&szRxCmd[1], NULL, 2) & 0xFF);
-        if (errno != 0 ) {
+        if (errno == 0 ) {
+	        // Binary format conversion and termination checks passed, set relays.
+	        byte bMask = 0b00000001;
+	        for (int i = 0;  i < NUM_RELAY_BOARD_IN_PINS; i++) {
+	            digitalWrite(i + RELAY_BOARD_IN1_PIN, (b & bMask) ? LOW:HIGH);
+	            bMask <<= 1; 
+	        }
+	        mySerial.println("Relays set");
+	        Serial.write(szRxCmd);
+        }
+		else {
 			sprintf(g_szDbg, "Binary format error, strtol: %d", errno);
 			mySerial.println(g_szDbg); Serial.println(g_szDbg);
-			bRxState = IDLE;
-            return;
-        }
-
-        // Binary format conversion and termination checks passed, set relays.
-        byte bMask = 0b00000001;
-        for (int i = 0;  i < NUM_RELAY_BOARD_IN_PINS; i++) {
-            digitalWrite(i + RELAY_BOARD_IN1_PIN, (b & bMask) ? LOW:HIGH);
-            bMask <<= 1; 
-        }
-        mySerial.println("Relays set");
-        Serial.write(szRxCmd);
-        bRxState = IDLE;
+		}
+		bRxState = IDLE;
     }
+    digitalWrite(LED_BUILTIN, LOW);
 }
