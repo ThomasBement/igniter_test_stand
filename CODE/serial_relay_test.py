@@ -21,8 +21,8 @@
 #    udevadm info /dev/ttyUSB0
 #
 #  Run:
-#   ./serial_echo_test.py com3 9600            Windows
-#   ./serial_echo_test.py /dev/ttyUSB0 9600    Linux
+#   ./serial_relay_test.py com3 9600            Windows
+#   ./serial_relay_test.py /dev/ttyUSB0 9600    Linux
 #
 #  Create a virtual loopback port under unix-like OS (https://pypi.org/project/PyVirtualSerialPorts/):
 #   virtualserialports -l 1&
