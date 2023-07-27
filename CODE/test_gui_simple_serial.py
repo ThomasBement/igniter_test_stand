@@ -28,8 +28,8 @@ import logger_helper as lh
 CONSTANTS
 """
 refresh_delay   = 10                # Serial read/write delay in 
-port = 'COM3'                       # Serial port for commands, Windoz
-port = '/dev/ttyUSB0'				# Serial port for commands, Linux
+port = 'COM4'                       # Serial port for commands, Windoz
+#port = '/dev/ttyUSB0'				# Serial port for commands, Linux
 baud_rate = '9600'
 
 # Relay specific information
