@@ -25,26 +25,25 @@ from tkinter import LEFT, filedialog
 import serial_helper as sh
 import logger_helper as lh
 
-"""
+""" -------------------------------------------------------------------------------------
 CONST
-"""
-
+------------------------------------------------------------------------------------- """ 
 # Graphics
-window_width    = 1389
-window_height   = 781
-window_image_path = './IMG/PnID_GUI.png'
-#serial_status = {'good': , 'bad': }
-async_delay = 17                        # Delay time [ms]
+window_width        = 1400                                  # GUI window width          [px]
+window_height       = 850                                   # GUI window height         [px]
+window_image_path   = './IMG/PnID_GUI_1400_850.png'         # Main GUI background       [str]
+async_delay         = 17                                    # Delay time                [ms]
 
-"""
+""" -------------------------------------------------------------------------------------
 GLOBAL VARS
-"""
+------------------------------------------------------------------------------------- """
 # Logic
-relay_states = [False,  False,  False,  False,  False,  False,  False,  False] # Relay states 0 - nominal, 1 - inverted
+relay_states        = [False,  False,  False,  False,  False,  False,  False,  False] # Relay states 0 - nominal, 1 - inverted
+serial_status       = False
 
-"""
+""" -------------------------------------------------------------------------------------
 TKINTER INIT
-"""
+------------------------------------------------------------------------------------- """
 window = tk.Tk()
 window.wm_title('Test Stand GUI')
 window.geometry('%ix%i' %(window_width, window_height))
@@ -58,9 +57,13 @@ canvas.pack()
 background_image = ImageTk.PhotoImage(master = canvas, file = window_image_path)
 canvas.create_image(0, 0, image = background_image, anchor = "nw")
 
-"""
+# Add status label
+status_label = tk.Label(canvas, text='', fg='#000000', font=("Helvetica", 10))
+status_label.place(x=885, y=70)
+
+""" -------------------------------------------------------------------------------------
 CLASSES
-"""
+------------------------------------------------------------------------------------- """
 class button:
     def __init__(self, name, position, size, color, relay_pointers, btn_type = 'invert', text = '', font = ("Helvetica", 18)):
         # Determine types for variables inside the button class
@@ -103,10 +106,22 @@ class button:
                                  text=self.text, font=self.font, fg='#000000', compound=LEFT, command=lambda b=self: state_change(b, relay_states))
         self.btn.place(x=self.x_pos, y=self.y_pos)
         
-"""
+""" -------------------------------------------------------------------------------------
 FUNCTIONS
-"""
-def update_graphics(relay_states):
+------------------------------------------------------------------------------------- """
+def update_graphics(relay_states, serial_status):
+    # Update serial status status
+    status_text = '?'
+    status_color = '#FFFFFF'
+    if serial_status:
+        status_text = 'CONNECTED'
+        status_color = '#2C9E10'
+    else:
+        status_text = 'DISCONNECTED'
+        status_color = '#FF2424'
+        return
+    status_label.configure(text='Serial Status: %s' %(status_text), bg=status_color)    
+    # Update relay valve buttons
     for b in buttons:
         if (b.btn_type != 'state'):
             disp_text = '?'
@@ -115,7 +130,18 @@ def update_graphics(relay_states):
             else:
                 disp_text = 'X'
             b.btn.configure(text=disp_text)
-    pass
+    # Update status indicator box
+    for b in buttons:
+        if (b.btn_type == 'state'):
+            b.btn.configure(bg='#8132A8')
+            if (relay_states == b.pointers):
+                b.btn.configure(bg='#2C9E10')
+                #status_indicator = tk.Button(canvas, width=b.width, height=20, bg='#2C9E10', image=px_img, state="disabled", 
+                #                 text='^', font=b.font, fg='#000000', compound=LEFT)
+                #status_indicator.place(x=b.x_pos, y=b.y_pos+b.height+10)
+
+    
+    
 
 def state_change(b: button, relay_states):
     # Update relay_states array
@@ -133,12 +159,16 @@ def state_change(b: button, relay_states):
         print('Button type error. %s expected a type of invert, driven or state, but got %s instead.' %(b.name, b.btn_type))
     # Encode relay_states to a byte
     byte_states = sum([int(relay_states[i]) << i for i in range(len(relay_states))])
+    # Put serial coms here
+    recived_states = byte_states
     decode_states = [byte_states & (1 << i) != 0 for i in range(8)]
     print(byte_states)
     print(relay_states)
     print(decode_states)
-    # Put serial coms here
-    update_graphics(relay_states)
+    # Update serial_status variable with state
+    if (byte_states == recived_states):
+        serial_status = True
+    update_graphics(relay_states, serial_status)
 
 # Redundand 
 def button_invert(b: button):
@@ -151,31 +181,31 @@ def button_state(b: button):
     else:
         print('Error, length missmatch. %s expected a length of %i, but got %i instead.' %(b.name, len(relay_states), len(b.pointers)))
 
-"""
+""" -------------------------------------------------------------------------------------
 TK-LOOP
-"""
-valve_size  = (40, 40)
-state_size  = (40, 40)
+------------------------------------------------------------------------------------- """
+valve_size  = (32, 32)
+state_size  = (65, 30)
 # Define buttons,   (name,          position,       size,           color,          relay_pointers,                                             btn_type,   text)
-PR_SV_001   = button('PR_SV_001',   (481, 100),     valve_size,     '#FFC336',      [0],                                                        'invert',   '?',        ("Helvetica", 18))  
-PR_SV_002   = button('PR_SV_002',   (484, 0),       valve_size,     '#FFC336',      [1],                                                        'invert',   '?',        ("Helvetica", 18)) 
-PR_SV_003   = button('PR_SV_003',   (610, 361),     valve_size,     '#FFC336',      [2],                                                        'invert',   '?',        ("Helvetica", 18)) 
-PR_SV_004   = button('PR_SV_004',   (610, 247),     valve_size,     '#FFC336',      [3],                                                        'invert',   '?',        ("Helvetica", 18)) 
-PG_SV_001   = button('PG_SV_001',   (406, 382),     valve_size,     '#FFC336',      [4],                                                        'invert',   '?',        ("Helvetica", 18)) 
-K_PV_001    = button('K_PV_001',    (1026, 101),    valve_size,     '#FF2424',      [3],                                                        'driven',   '?',        ("Helvetica", 18))
-O2_PV_001   = button('O2_PV_001',   (350, 621),     valve_size,     '#2C9E10',      [2],                                                        'driven',   '?',        ("Helvetica", 18)) 
-SAFE        = button('safe',        (1000, 0),      valve_size,     '#8132A8',      [False, False, False, False, False, False, False, False],   'state',    'SAFE',     ("Helvetica", 10))
-FILL        = button('fill',        (1050, 0),      valve_size,     '#8132A8',      [False, True,  False, False, False, False, False, False],   'state',    'FILL',     ("Helvetica", 10))
-PRESS       = button('press',       (1100, 0),      valve_size,     '#8132A8',      [True,  False, False, False, False, False, False, False],   'state',    'PRESS',    ("Helvetica", 10))
-FIRE        = button('fire',        (1150, 0),      valve_size,     '#8132A8',      [True,  False, True,  True,  False, False, False, False],   'state',    'FIRE',     ("Helvetica", 10))
-PURGE       = button('purge',       (1200, 0),      valve_size,     '#8132A8',      [False, False, True,  True,  True,  False, False, False],   'state',    'PURGE',    ("Helvetica", 10))
-DEPRES      = button('depres',      (1250, 0),      valve_size,     '#8132A8',      [False, True,  False, False, False, False, False, False],   'state',    'DEPRES',   ("Helvetica", 10))
-ESTOP       = button('depres',      (1324, 0),      valve_size,     '#8132A8',      [6, 7],                                                     'invert',   'E-STOP',   ("Helvetica", 10))
+PR_SV_001   = button('PR_SV_001',   (485, 159),     valve_size,     '#FFC336',      [0],                                                        'invert',   '?',        ("Helvetica", 18))  
+PR_SV_002   = button('PR_SV_002',   (488, 59),      valve_size,     '#FFC336',      [1],                                                        'invert',   '?',        ("Helvetica", 18)) 
+PR_SV_003   = button('PR_SV_003',   (614, 419),     valve_size,     '#FFC336',      [2],                                                        'invert',   '?',        ("Helvetica", 18)) 
+PR_SV_004   = button('PR_SV_004',   (614, 305),     valve_size,     '#FFC336',      [3],                                                        'invert',   '?',        ("Helvetica", 18)) 
+PG_SV_001   = button('PG_SV_001',   (410, 440),     valve_size,     '#FFC336',      [4],                                                        'invert',   '?',        ("Helvetica", 18)) 
+K_PV_001    = button('K_PV_001',    (1030, 159),    valve_size,     '#FF2424',      [3],                                                        'driven',   '?',        ("Helvetica", 18))
+O2_PV_001   = button('O2_PV_001',   (354, 679),     valve_size,     '#2C9E10',      [2],                                                        'driven',   '?',        ("Helvetica", 18)) 
+SAFE        = button('safe',        (885, 0),       state_size,     '#8132A8',      [False, False, False, False, False, False, False, False],   'state',    'SAFE',     ("Helvetica", 10))
+FILL        = button('fill',        (960, 0),       state_size,     '#8132A8',      [False, True,  False, False, False, False, False, False],   'state',    'FILL',     ("Helvetica", 10))
+PRESS       = button('press',       (1035, 0),      state_size,     '#8132A8',      [True,  False, False, False, False, False, False, False],   'state',    'PRESS',    ("Helvetica", 10))
+FIRE        = button('fire',        (1110, 0),      state_size,     '#8132A8',      [True,  False, True,  True,  False, False, False, False],   'state',    'FIRE',     ("Helvetica", 10))
+PURGE       = button('purge',       (1185, 0),      state_size,     '#8132A8',      [False, False, False, False, True,  False, False, False],   'state',    'PURGE',    ("Helvetica", 10))
+DEPRES      = button('depres',      (1260, 0),      state_size,     '#8132A8',      [False, True,  False, False, False, False, False, False],   'state',    'DEPRESS',  ("Helvetica", 10))
+ESTOP       = button('depres',      (1335, 0),      state_size,     '#8132A8',      [False, False, False, False, False, False, True,  True ],   'state',    'E-STOP',   ("Helvetica", 10))
 
 buttons     = [PR_SV_001, PR_SV_002, PR_SV_003, PR_SV_004, PG_SV_001, K_PV_001, O2_PV_001, SAFE, FILL, PRESS, FIRE, PURGE, DEPRES, ESTOP]
 
 # Generate buttons  
-update_graphics(relay_states)
+update_graphics(relay_states, serial_status)
 
 """
 LOOPED FUNCTIONS
@@ -184,8 +214,8 @@ LOOPED FUNCTIONS
 window.mainloop()
 
 
-"""
+""" -------------------------------------------------------------------------------------
 PROGRAM TERMINATION
-"""
+------------------------------------------------------------------------------------- """
 # Close out serial port at finish
 print('Thanks for playing...')
