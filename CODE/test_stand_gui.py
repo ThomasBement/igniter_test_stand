@@ -133,7 +133,10 @@ def state_change(b: button, relay_states):
         print('Button type error. %s expected a type of invert, driven or state, but got %s instead.' %(b.name, b.btn_type))
     # Encode relay_states to a byte
     byte_states = sum([int(relay_states[i]) << i for i in range(len(relay_states))])
+    decode_states = [byte_states & (1 << i) != 0 for i in range(8)]
     print(byte_states)
+    print(relay_states)
+    print(decode_states)
     # Put serial coms here
     update_graphics(relay_states)
 
