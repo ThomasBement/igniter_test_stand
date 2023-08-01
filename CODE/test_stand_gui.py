@@ -20,7 +20,7 @@ import matplotlib.pyplot as plt
 import random
 
 from PIL import ImageTk, Image
-from tkinter import filedialog
+from tkinter import LEFT, filedialog
 
 import serial_helper as sh
 import logger_helper as lh
@@ -96,11 +96,12 @@ class button:
         self.font               = type_list[7][0]
         # Assign tkinter specific attributes
         if (self.btn_type == 'driven'):
-            self.btn = tk.Button(canvas, width=self.width, height=self.height, bg=self.color, image=px_img, state="disabled", command=lambda b=self: state_change(b, relay_states))
+            self.btn = tk.Button(canvas, width=self.width, height=self.height, bg=self.color, image=px_img, state="disabled", 
+                                 text=self.text, font=self.font, fg='#000000', compound=LEFT, command=lambda b=self: state_change(b, relay_states))
         else:
-            self.btn = tk.Button(canvas, width=self.width, height=self.height, bg=self.color, image=px_img, command=lambda b=self: state_change(b, relay_states))
-        self.label = tk.Label(text=self.text, fg="Black", font=self.font)
-        self.label.place(x=self.x_pos+(self.width-font_px)/2, y=self.y_pos+(self.height-font_px)/2)
+            self.btn = tk.Button(canvas, width=self.width, height=self.height, bg=self.color, image=px_img, 
+                                 text=self.text, font=self.font, fg='#000000', compound=LEFT, command=lambda b=self: state_change(b, relay_states))
+        self.btn.place(x=self.x_pos, y=self.y_pos)
         
 """
 FUNCTIONS
@@ -113,10 +114,11 @@ def update_graphics(relay_states):
                 disp_text = '0'
             else:
                 disp_text = 'X'
-            b.label.configure(text=disp_text)
+            b.btn.configure(text=disp_text)
     pass
 
 def state_change(b: button, relay_states):
+    # Update relay_states array
     if (b.btn_type == 'invert'):
         for i in b.pointers:
             relay_states[i] = not(relay_states[i])
@@ -129,6 +131,9 @@ def state_change(b: button, relay_states):
             print('Error, length missmatch. %s expected a length of %i, but got %i instead.' %(b.name, len(relay_states), len(b.pointers)))
     else:
         print('Button type error. %s expected a type of invert, driven or state, but got %s instead.' %(b.name, b.btn_type))
+    # Encode relay_states to a byte
+    byte_states = sum([int(relay_states[i]) << i for i in range(len(relay_states))])
+    print(byte_states)
     # Put serial coms here
     update_graphics(relay_states)
 
@@ -156,19 +161,17 @@ PR_SV_004   = button('PR_SV_004',   (610, 247),     valve_size,     '#FFC336',  
 PG_SV_001   = button('PG_SV_001',   (406, 382),     valve_size,     '#FFC336',      [4],                                                        'invert',   '?',        ("Helvetica", 18)) 
 K_PV_001    = button('K_PV_001',    (1026, 101),    valve_size,     '#FF2424',      [3],                                                        'driven',   '?',        ("Helvetica", 18))
 O2_PV_001   = button('O2_PV_001',   (350, 621),     valve_size,     '#2C9E10',      [2],                                                        'driven',   '?',        ("Helvetica", 18)) 
-SAFE        = button('safe',        (1000, 0),      valve_size,     '#8132a8',      [False, False, False, False, False, False, False, False],   'state',    'SAFE',     ("Helvetica", 10))
-FILL        = button('fill',        (1050, 0),      valve_size,     '#8132a8',      [False, True,  False, False, False, False, False, False],   'state',    'FILL',     ("Helvetica", 10))
-PRESS       = button('press',       (1100, 0),      valve_size,     '#8132a8',      [True,  False, False, False, False, False, False, False],   'state',    'PRESS',    ("Helvetica", 10))
-FIRE        = button('fire',        (1150, 0),      valve_size,     '#8132a8',      [True,  False, True,  True,  False, False, False, False],   'state',    'FIRE',     ("Helvetica", 10))
-PURGE       = button('purge',       (1200, 0),      valve_size,     '#8132a8',      [False, False, True,  True,  True,  False, False, False],   'state',    'PURGE',    ("Helvetica", 10))
-DEPRES      = button('depres',      (1250, 0),      valve_size,     '#8132a8',      [False, True,  False, False, False, False, False, False],   'state',    'DEPRES',   ("Helvetica", 10))
-ESTOP       = button('depres',      (1324, 0),      valve_size,     '#8132a8',      [6, 7],                                                     'invert',   'E-STOP',   ("Helvetica", 10))
+SAFE        = button('safe',        (1000, 0),      valve_size,     '#8132A8',      [False, False, False, False, False, False, False, False],   'state',    'SAFE',     ("Helvetica", 10))
+FILL        = button('fill',        (1050, 0),      valve_size,     '#8132A8',      [False, True,  False, False, False, False, False, False],   'state',    'FILL',     ("Helvetica", 10))
+PRESS       = button('press',       (1100, 0),      valve_size,     '#8132A8',      [True,  False, False, False, False, False, False, False],   'state',    'PRESS',    ("Helvetica", 10))
+FIRE        = button('fire',        (1150, 0),      valve_size,     '#8132A8',      [True,  False, True,  True,  False, False, False, False],   'state',    'FIRE',     ("Helvetica", 10))
+PURGE       = button('purge',       (1200, 0),      valve_size,     '#8132A8',      [False, False, True,  True,  True,  False, False, False],   'state',    'PURGE',    ("Helvetica", 10))
+DEPRES      = button('depres',      (1250, 0),      valve_size,     '#8132A8',      [False, True,  False, False, False, False, False, False],   'state',    'DEPRES',   ("Helvetica", 10))
+ESTOP       = button('depres',      (1324, 0),      valve_size,     '#8132A8',      [6, 7],                                                     'invert',   'E-STOP',   ("Helvetica", 10))
 
 buttons     = [PR_SV_001, PR_SV_002, PR_SV_003, PR_SV_004, PG_SV_001, K_PV_001, O2_PV_001, SAFE, FILL, PRESS, FIRE, PURGE, DEPRES, ESTOP]
 
-# Generate buttons
-for b in buttons:
-    b.btn.place(x=b.x_pos, y=b.y_pos)
+# Generate buttons  
 update_graphics(relay_states)
 
 """
