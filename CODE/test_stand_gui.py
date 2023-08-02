@@ -135,13 +135,7 @@ def update_graphics(relay_states, serial_status):
         if (b.btn_type == 'state'):
             b.btn.configure(bg='#8132A8')
             if (relay_states == b.pointers):
-                b.btn.configure(bg='#2C9E10')
-                #status_indicator = tk.Button(canvas, width=b.width, height=20, bg='#2C9E10', image=px_img, state="disabled", 
-                #                 text='^', font=b.font, fg='#000000', compound=LEFT)
-                #status_indicator.place(x=b.x_pos, y=b.y_pos+b.height+10)
-
-    
-    
+                b.btn.configure(bg='#2C9E10')    
 
 def state_change(b: button, relay_states):
     # Update relay_states array
