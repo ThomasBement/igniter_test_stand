@@ -38,8 +38,8 @@ async_delay         = 17                                    # Delay time        
 GLOBAL VARS
 ------------------------------------------------------------------------------------- """
 # Logic
-relay_states        = [False,  False,  False,  False,  False,  False,  False,  False] # Relay states 0 - nominal, 1 - inverted
-serial_status       = False
+relay_states        = [False,  False,  False,  False,  False,  False,  False,  False]   # Relay states False - nominal, True - inverted
+serial_status       = False                                                             # Serial conection status, Flase - disconnected, True - connected
 
 """ -------------------------------------------------------------------------------------
 TKINTER INIT
@@ -57,7 +57,7 @@ canvas.pack()
 background_image = ImageTk.PhotoImage(master = canvas, file = window_image_path)
 canvas.create_image(0, 0, image = background_image, anchor = "nw")
 
-# Add status label
+# Add status label and locate it in the GUI
 status_label = tk.Label(canvas, text='', fg='#000000', font=("Helvetica", 10))
 status_label.place(x=885, y=70)
 
@@ -152,7 +152,8 @@ def state_change(b: button, relay_states):
         pass
     elif (b.btn_type == 'state'):
         if (len(relay_states) == len(b.pointers)):
-            relay_states = b.pointers
+            for i in range(len(relay_states)):
+                relay_states[i] = b.pointers[i]
         else:
             print('Error, length missmatch. %s expected a length of %i, but got %i instead.' %(b.name, len(relay_states), len(b.pointers)))
     else:
@@ -162,12 +163,13 @@ def state_change(b: button, relay_states):
     # Put serial coms here
     recived_states = byte_states
     decode_states = [byte_states & (1 << i) != 0 for i in range(8)]
-    print(byte_states)
-    print(relay_states)
-    print(decode_states)
+    #print(byte_states)
+    #print(relay_states)
     # Update serial_status variable with state
     if (byte_states == recived_states):
         serial_status = True
+    else:
+        serial_status = False
     update_graphics(relay_states, serial_status)
 
 # Redundand 
