@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 # ---------------------------------------- #
 # test_stand_gui [Python File]
 # Written By: Thomas Bement
@@ -32,7 +34,7 @@ CONST
 window_width        = 1400                                  # GUI window width          [px]
 window_height       = 850                                   # GUI window height         [px]
 window_image_path   = './IMG/PnID_GUI_1400_850.png'         # Main GUI background       [str]
-async_delay         = 17                                    # Delay time                [ms]
+async_delay         = 1000                                  # Interval for serial check [ms]
 
 """ -------------------------------------------------------------------------------------
 GLOBAL VARS
@@ -40,6 +42,25 @@ GLOBAL VARS
 # Logic
 relay_states        = [False,  False,  False,  False,  False,  False,  False,  False]   # Relay states False - nominal, True - inverted
 serial_status       = False                                                             # Serial conection status, Flase - disconnected, True - connected
+
+""" -------------------------------------------------------------------------------------
+Initialize serial port to talk with arduino
+------------------------------------------------------------------------------------- """
+port = "/dev/ttyUSB0"
+if len(sys.argv) > 1: port = sys.argv[1]
+baud_rate = '9600'
+if len(sys.argv) > 2: baud_rate = sys.argv[2]
+
+print(sys.argv[0] + " started...", end='')
+log_name = os.path.splitext(sys.argv[0])[0]+'.log'
+g_log = lh.setup_custom_logger(log_name)
+already_logged_termios_error = False
+print('Log on: ' + log_name)
+print("Open serial port (resets Arduino)...", end='')
+s = sh.open_serial_port(port, baud_rate, g_log)
+print("Wait on Arduino...", end='')
+time.sleep(2) # Wait for Arduino to reset and initialize.
+print('OK')
 
 """ -------------------------------------------------------------------------------------
 TKINTER INIT
@@ -109,26 +130,44 @@ class button:
 """ -------------------------------------------------------------------------------------
 FUNCTIONS
 ------------------------------------------------------------------------------------- """
+
+def send_command_check_resp(s, byte_val):
+    try:    
+        send_string = 'b' + format(byte_val, '08b') + '\n'
+        sh.send_line_to_serial(s, send_string)
+        response = sh.read_line_from_serial(s)
+        if (response == send_string): return True 
+        return False
+            
+    except BaseException as e:
+        g_log.error(f'Exception/Error during send_command_check_resp: {type(e)}: {e}')
+        return False
+
+def send_relay_state_to_arduino_update_graphics():
+    # Encode relay_states to a byte and send as binary string to arduino
+    byte_states = sum([int(relay_states[i]) << i for i in range(len(relay_states))])
+    if send_command_check_resp(s, byte_states): serial_status = True
+    else: serial_status = False
+    update_graphics(relay_states, serial_status)
+
 def update_graphics(relay_states, serial_status):
     # Update serial status status
-    status_text = '?'
-    status_color = '#FFFFFF'
     if serial_status:
         status_text = 'CONNECTED'
         status_color = '#2C9E10'
     else:
         status_text = 'DISCONNECTED'
         status_color = '#FF2424'
-        return
     status_label.configure(text='Serial Status: %s' %(status_text), bg=status_color)    
     # Update relay valve buttons
     for b in buttons:
         if (b.btn_type != 'state'):
             disp_text = '?'
-            if (relay_states[b.pointers[0]] == True):
-                disp_text = '0'
-            else:
-                disp_text = 'X'
+            if serial_status:
+                if (relay_states[b.pointers[0]] == True):
+                    disp_text = '0'
+                else:
+                    disp_text = 'X'
             b.btn.configure(text=disp_text)
     # Update status indicator box
     for b in buttons:
@@ -152,30 +191,7 @@ def state_change(b: button, relay_states):
             print('Error, length missmatch. %s expected a length of %i, but got %i instead.' %(b.name, len(relay_states), len(b.pointers)))
     else:
         print('Button type error. %s expected a type of invert, driven or state, but got %s instead.' %(b.name, b.btn_type))
-    # Encode relay_states to a byte
-    byte_states = sum([int(relay_states[i]) << i for i in range(len(relay_states))])
-    # Put serial coms here
-    recived_states = byte_states
-    decode_states = [byte_states & (1 << i) != 0 for i in range(8)]
-    #print(byte_states)
-    #print(relay_states)
-    # Update serial_status variable with state
-    if (byte_states == recived_states):
-        serial_status = True
-    else:
-        serial_status = False
-    update_graphics(relay_states, serial_status)
-
-# Redundand 
-def button_invert(b: button):
-    for i in b.pointers:
-        relay_states[i] = not(relay_states[i])
-
-def button_state(b: button):
-    if (len(relay_states) == len(b.pointers)):
-        relay_states = b.pointers
-    else:
-        print('Error, length missmatch. %s expected a length of %i, but got %i instead.' %(b.name, len(relay_states), len(b.pointers)))
+    send_relay_state_to_arduino_update_graphics()
 
 """ -------------------------------------------------------------------------------------
 TK-LOOP
@@ -200,14 +216,18 @@ ESTOP       = button('depres',      (1335, 0),      state_size,     '#8132A8',  
 
 buttons     = [PR_SV_001, PR_SV_002, PR_SV_003, PR_SV_004, PG_SV_001, K_PV_001, O2_PV_001, SAFE, FILL, PRESS, FIRE, PURGE, DEPRES, ESTOP]
 
-# Generate buttons  
-update_graphics(relay_states, serial_status)
+# Send relay state to arduino first time and generate buttons
+send_relay_state_to_arduino_update_graphics()
 
 """
-LOOPED FUNCTIONS
+LOOPED FUNCTIONS, called once per frame.
 """
-#mainloop_fn(relay_states)
-window.mainloop()
+def serial_check():
+    send_relay_state_to_arduino_update_graphics() # Check that arduino is still responding.
+    window.after(async_delay, serial_check)       # Request subsequent serial checks.
+
+window.after(async_delay, serial_check) # Request first serial check.
+window.mainloop()                       # Blocks untill window distroyed.
 
 
 """ -------------------------------------------------------------------------------------
