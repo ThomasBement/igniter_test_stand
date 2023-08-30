@@ -133,7 +133,7 @@ FUNCTIONS
 
 def send_command_check_resp(s, byte_val):
     try:    
-        send_string = 'b' + format(byte_val, '08b') + '\n'
+        send_string = format(byte_val, '08b') + '\r' + '\n' 
         sh.send_line_to_serial(s, send_string)
         response = sh.read_line_from_serial(s)
         if (response == send_string): return True 

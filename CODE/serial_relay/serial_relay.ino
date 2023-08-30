@@ -28,7 +28,8 @@ void setup() {
 
   // set the data rate for the SoftwareSerial port
   mySerial.begin(9600);
-  mySerial.println("Relay control firmware, version 1.0");
+  mySerial.println("./serial_relay/serial_relay.ino, version 1.1");
+  mySerial.println("GitHub commit hash: 966c558");
 }
 
 void loop()
