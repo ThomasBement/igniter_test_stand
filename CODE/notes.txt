@@ -20,3 +20,6 @@ So breaking this task down I have:
   5. Merge SoftwareSerial into relay_cont.ino and connect Uno SoftwareSerial TX pin to USB to serial TTL converter.
   6. In test_gui_simple_serial.py add support to open/read serial TTL converter into log.
 
+Currently using test_stand_gui.py on host with ./serial_relay/serial_relay.ino on Arduino UNO.
+Debug output is available on Arduino UNO digital pin 11 at 9600 baud.   
+
