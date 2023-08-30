@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# Use with serial_relay.ino
 
 # ---------------------------------------- #
 # test_stand_gui [Python File]
@@ -46,7 +47,7 @@ serial_status       = False                                                     
 """ -------------------------------------------------------------------------------------
 Initialize serial port to talk with arduino
 ------------------------------------------------------------------------------------- """
-port = "/dev/ttyUSB0"
+port = "COM3"
 if len(sys.argv) > 1: port = sys.argv[1]
 baud_rate = '9600'
 if len(sys.argv) > 2: baud_rate = sys.argv[2]
